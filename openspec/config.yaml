@@ -1,0 +1,56 @@
+schema: spec-driven
+
+# Injected into every artifact, apply, and archive.
+context: |
+  HR system for a single company. One installation serves one organization:
+  there is no multi-tenancy and no per-tenant scoping.
+
+  Status: only administration exists today (users, roles, permissions). The
+  planned capabilities are employees and org structure, leave and absences,
+  time and attendance, and payroll. Designs for the admin area must not block
+  those modules.
+
+  Domain constraints every spec and design must respect:
+  - Personal and HR data is protected. Define retention, erasure, and masking
+    for sensitive fields instead of storing everything indefinitely.
+  - Employment facts are effective-dated. Contract, position, salary, and
+    leave-balance changes keep history; they are never silent overwrites.
+  - Changes that affect an employee's record or pay require approval, or at
+    minimum a recorded reason, before they take effect. Model who requested it,
+    who approved it, and when.
+  - Field-level visibility is real. Salary, bank, health, and similar fields are
+    visible only to the roles that need them, enforced server-side rather than
+    hidden in the UI alone.
+
+  Write all planning artifacts in English.
+
+# Extra rules added to one artifact's built-in guidance.
+rules:
+  proposal:
+    - "Keep the proposal to roughly 1-2 pages."
+    - "Always state what is explicitly out of scope for this change."
+  specs:
+    - "Name the permission that gates each user-facing requirement (for example `employees.view` or `leave.approve`) and describe the behavior without it."
+    - "State approval and visibility explicitly: who may read or change the data, and whether the change needs approval before it applies."
+  design:
+    - "Cover the data model: tables, columns, keys, and migrations, including how effective-dated history and retention are represented."
+    - "Include a permission matrix: each action, the permission that gates it, and the policy or middleware that enforces it."
+    - "List the routes, Inertia pages, controllers, and form requests the change adds or modifies."
+    - "Name any Wayfinder regeneration, frontend types, or shared UI components the change touches."
+  tasks:
+    - "Every task states how it is verified: a Pest test name, a command, or observable behavior."
+    - "Each task group lands its own tests and documentation; never collect testing into a final group."
+
+# Advisory guidance for how apply and archive work is conducted.
+operations:
+  apply:
+    guidance:
+      - "Run `vendor/bin/pint --dirty --format agent` after editing PHP files."
+      - "Run the narrowest Pest test set covering the change and make it pass before marking a task done."
+      - "Run `composer types:check` for touched PHP code."
+      - "Run `npm run types:check` and `npm run check` when Vue or TypeScript changed."
+      - "Import route helpers from `@/actions` or `@/routes` instead of hardcoding URLs, and regenerate types with `php artisan wayfinder:generate` when routes change."
+      - "Leave a task unchecked and say why when its verification could not be run."
+  archive:
+    guidance:
+      - "Keep the archive report brief: what shipped and any follow-up worth remembering."
