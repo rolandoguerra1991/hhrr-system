@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    BriefcaseBusiness,
+    Building2,
     KeyRound,
     LayoutGrid,
     ShieldCheck,
     UserRound,
-    Building2,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import RoleController from '@/actions/App/Http/Controllers/RoleController';
 import DepartmentController from '@/actions/App/Http/Controllers/DepartmentController';
 import PermissionController from '@/actions/App/Http/Controllers/PermissionController';
+import PositionController from '@/actions/App/Http/Controllers/PositionController';
 import UserController from '@/actions/App/Http/Controllers/UserController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
@@ -55,6 +57,14 @@ const administrationNavItems = computed<NavItem[]>(() => {
             title: 'Departments',
             href: DepartmentController.index.url(),
             icon: Building2,
+        });
+    }
+
+    if (can.positions.view) {
+        items.push({
+            title: 'Positions',
+            href: PositionController.index.url(),
+            icon: BriefcaseBusiness,
         });
     }
 

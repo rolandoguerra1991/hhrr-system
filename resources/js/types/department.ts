@@ -5,6 +5,7 @@ export type Department = {
     depth: number;
     children_count: number;
     users_count: number;
+    positions_count: number;
     manager_name: string | null;
     can: {
         update: boolean;

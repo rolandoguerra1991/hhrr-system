@@ -29,6 +29,10 @@ export type Auth = {
             view: boolean;
             create: boolean;
         };
+        positions: {
+            view: boolean;
+            create: boolean;
+        };
     };
 };
 

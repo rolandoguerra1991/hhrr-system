@@ -2,6 +2,7 @@
 
 use App\Enums\Role as RoleEnum;
 use App\Models\Department;
+use App\Models\Position;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Inertia\Testing\AssertableInertia;
@@ -283,6 +284,37 @@ test('a department with assigned users cannot be deleted', function () {
     expect(Department::whereKey($department->id)->exists())->toBeTrue();
 });
 
+test('a department with assigned positions cannot be deleted', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.delete');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+    Position::factory()->inDepartment($department)->create(['name' => 'Engineer']);
+
+    $this->actingAs($actor)
+        ->from(route('departments.index'))
+        ->delete(route('departments.destroy', $department))
+        ->assertSessionHasErrors('department');
+
+    expect(Department::whereKey($department->id)->exists())->toBeTrue();
+});
+
+test('a department can be deleted after its last position is deleted', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.delete');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+    $position = Position::factory()->inDepartment($department)->create(['name' => 'Engineer']);
+
+    $position->delete();
+
+    $this->actingAs($actor)
+        ->delete(route('departments.destroy', $department))
+        ->assertRedirect(route('departments.index'));
+
+    expect(Department::whereKey($department->id)->exists())->toBeFalse();
+});
+
 test('an unused department can be deleted', function () {
     $actor = User::factory()->create();
     $actor->givePermissionTo('departments.delete');
@@ -307,6 +339,7 @@ test('the department tree is listed in hierarchy order with depth and counts', f
     $manager = User::factory()->create(['name' => 'Ada Lovelace']);
     $warehouse->update(['manager_id' => $manager->id]);
     User::factory()->create(['department_id' => $warehouse->id]);
+    Position::factory()->inDepartment($warehouse)->create(['name' => 'Engineer']);
 
     $this->actingAs($user)
         ->get(route('departments.index'))
@@ -319,11 +352,13 @@ test('the department tree is listed in hierarchy order with depth and counts', f
             ->where('departments.0.depth', 0)
             ->where('departments.0.children_count', 1)
             ->where('departments.0.users_count', 0)
+            ->where('departments.0.positions_count', 0)
             ->where('departments.0.manager_name', null)
             ->where('departments.0.can.update', false)
             ->where('departments.1.name', 'Warehouse')
             ->where('departments.1.depth', 1)
             ->where('departments.1.users_count', 1)
+            ->where('departments.1.positions_count', 1)
             ->where('departments.1.manager_name', 'Ada Lovelace')
             ->where('departments.1.can.delete', false)
             ->where('departments.2.name', 'Sales')

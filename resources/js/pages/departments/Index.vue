@@ -48,23 +48,38 @@ const departmentToDelete = ref<Department | null>(null);
 const deleteDialogOpen = ref(false);
 
 function isInUse(department: Department): boolean {
-    return department.children_count > 0 || department.users_count > 0;
+    return (
+        department.children_count > 0 ||
+        department.users_count > 0 ||
+        department.positions_count > 0
+    );
 }
 
 function inUseReason(department: Department): string | null {
-    if (department.children_count > 0 && department.users_count > 0) {
-        return 'Move or delete the child departments and reassign the users first';
-    }
+    const reasons: string[] = [];
 
     if (department.children_count > 0) {
-        return 'Move or delete the child departments first';
+        reasons.push('move or delete the child departments');
     }
 
     if (department.users_count > 0) {
-        return 'Reassign the users to another department first';
+        reasons.push('reassign the users to another department');
     }
 
-    return null;
+    if (department.positions_count > 0) {
+        const noun =
+            department.positions_count === 1 ? 'position' : 'positions';
+
+        reasons.push(
+            `reassign or delete the ${department.positions_count} attached ${noun}`,
+        );
+    }
+
+    if (reasons.length === 0) {
+        return null;
+    }
+
+    return `First ${reasons.join(', and ')}`;
 }
 
 function askToDelete(department: Department): void {

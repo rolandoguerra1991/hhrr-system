@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Models\Department;
+use App\Models\Position;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
@@ -94,4 +96,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])
         ->middleware('can:delete,department')
         ->name('departments.destroy');
+
+    Route::get('positions', [PositionController::class, 'index'])
+        ->middleware('can:viewAny,'.Position::class)
+        ->name('positions.index');
+
+    Route::get('positions/create', [PositionController::class, 'create'])
+        ->middleware('can:create,'.Position::class)
+        ->name('positions.create');
+
+    Route::post('positions', [PositionController::class, 'store'])
+        ->middleware('can:create,'.Position::class)
+        ->name('positions.store');
+
+    Route::get('positions/{position}/edit', [PositionController::class, 'edit'])
+        ->middleware('can:update,position')
+        ->name('positions.edit');
+
+    Route::put('positions/{position}', [PositionController::class, 'update'])
+        ->middleware('can:update,position')
+        ->name('positions.update');
+
+    Route::delete('positions/{position}', [PositionController::class, 'destroy'])
+        ->middleware('can:delete,position')
+        ->name('positions.destroy');
 });

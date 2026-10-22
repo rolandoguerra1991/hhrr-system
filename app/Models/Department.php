@@ -65,4 +65,14 @@ class Department extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Get the positions attached to the department.
+     *
+     * @return HasMany<Position, $this>
+     */
+    public function positions(): HasMany
+    {
+        return $this->hasMany(Position::class);
+    }
 }
