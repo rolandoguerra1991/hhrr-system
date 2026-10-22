@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Concerns\DepartmentMembershipRules;
 use App\Concerns\ProfileValidationRules;
 use App\Concerns\RoleAssignmentRules;
 use App\Models\User;
@@ -12,7 +13,7 @@ use Illuminate\Validation\Validator;
 
 class UpdateUserRequest extends FormRequest
 {
-    use ProfileValidationRules, RoleAssignmentRules;
+    use DepartmentMembershipRules, ProfileValidationRules, RoleAssignmentRules;
 
     /**
      * Get the validation rules that apply to the request.
@@ -28,6 +29,7 @@ class UpdateUserRequest extends FormRequest
             ...$this->profileRules($userId),
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
             ...$this->roleRules(),
+            ...$this->departmentMembershipRules(),
         ];
     }
 

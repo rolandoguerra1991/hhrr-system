@@ -8,6 +8,7 @@ export type ManagedUser = {
     name: string;
     email: string;
     roles: string[];
+    department: string | null;
     is_protected: boolean;
     is_self: boolean;
     can: {

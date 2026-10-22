@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role as RoleEnum;
+use App\Models\Department;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,28 @@ test('users with the users.view permission can browse the list', function () {
         );
 });
 
+test('the users index includes each user department', function () {
+    $actor = User::factory()->create(['name' => 'Zed Actor']);
+    $actor->givePermissionTo('users.view');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+
+    $ada = User::factory()->create(['name' => 'Ada Lovelace']);
+    $ada->department_id = $department->id;
+    $ada->save();
+
+    User::factory()->create(['name' => 'Grace Hopper']);
+
+    $this->actingAs($actor)
+        ->get(route('users.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('users.data', 3)
+            ->where('users.data.0.department', 'Operations')
+            ->where('users.data.1.department', null)
+        );
+});
+
 test('the users index can be searched by name and email', function () {
     $user = User::factory()->create();
     $user->givePermissionTo('users.view');
@@ -82,6 +105,79 @@ test('a user can be created with roles', function () {
     expect($user->getRoleNames()->all())->toBe(['Editor']);
     expect(Hash::check('password', $user->password))->toBeTrue();
     expect($user->email_verified_at)->not->toBeNull();
+});
+
+test('a user can be created with a department', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('users.create');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+
+    $this->actingAs($actor)
+        ->post(route('users.store'), [
+            'name' => 'Ada Lovelace',
+            'email' => 'ada@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'department_id' => $department->id,
+        ])
+        ->assertRedirect(route('users.index'));
+
+    expect(User::where('email', 'ada@example.com')->firstOrFail()->department_id)->toBe($department->id);
+});
+
+test('an unknown department is rejected when creating a user', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('users.create');
+
+    $this->actingAs($actor)
+        ->from(route('users.create'))
+        ->post(route('users.store'), [
+            'name' => 'Ada Lovelace',
+            'email' => 'ada@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'department_id' => 999,
+        ])
+        ->assertSessionHasErrors('department_id');
+
+    expect(User::where('email', 'ada@example.com')->exists())->toBeFalse();
+});
+
+test('a user is created without a department when the field is blank', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('users.create');
+
+    $this->actingAs($actor)
+        ->post(route('users.store'), [
+            'name' => 'Ada Lovelace',
+            'email' => 'ada@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'department_id' => '',
+        ])
+        ->assertRedirect(route('users.index'));
+
+    expect(User::where('email', 'ada@example.com')->firstOrFail()->department_id)->toBeNull();
+});
+
+test('a user can be assigned to a department on update', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('users.update');
+
+    $department = Department::factory()->create();
+    $user = User::factory()->create();
+
+    $this->actingAs($actor)
+        ->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => [],
+            'department_id' => $department->id,
+        ])
+        ->assertRedirect(route('users.edit', $user));
+
+    expect($user->refresh()->department_id)->toBe($department->id);
 });
 
 test('creating a user requires a confirmed password', function () {
@@ -367,6 +463,8 @@ test('only a super admin is offered the super admin role in the forms', function
     $actor = User::factory()->create();
     $actor->givePermissionTo('users.create');
 
+    Department::factory()->create(['name' => 'Operations']);
+
     $this->actingAs($actor)
         ->get(route('users.create'))
         ->assertOk()
@@ -374,6 +472,8 @@ test('only a super admin is offered the super admin role in the forms', function
             ->component('users/Create')
             ->where('can.assignSuperAdmin', false)
             ->where('roles.0.is_protected', true)
+            ->has('departments', 1)
+            ->where('departments.0.name', 'Operations')
         );
 
     $superAdmin = User::factory()->create();
@@ -391,7 +491,11 @@ test('the edit form is loaded with the assigned roles', function () {
     $actor = User::factory()->create();
     $actor->givePermissionTo('users.update');
 
+    $department = Department::factory()->create(['name' => 'Operations']);
+
     $user = User::factory()->create(['name' => 'Ada Lovelace']);
+    $user->department_id = $department->id;
+    $user->save();
     $user->assignRole(Role::findOrCreate('Editor', 'web'));
 
     $this->actingAs($actor)
@@ -400,6 +504,9 @@ test('the edit form is loaded with the assigned roles', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('users/Edit')
             ->where('user.name', 'Ada Lovelace')
+            ->where('user.department_id', $department->id)
             ->where('roleNames', ['Editor'])
+            ->has('departments', 1)
+            ->where('departments.0.name', 'Operations')
         );
 });

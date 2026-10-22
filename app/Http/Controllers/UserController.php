@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\Role as RoleEnum;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,7 @@ class UserController extends Controller
         $search = $request->string('search')->trim()->value();
 
         $users = User::query()
-            ->with('roles')
+            ->with(['roles', 'department:id,name'])
             ->when($search !== '', fn (Builder $query): Builder => $query->where(
                 fn (Builder $query): Builder => $query
                     ->where('name', 'like', "%{$search}%")
@@ -38,6 +39,7 @@ class UserController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'roles' => $user->getRoleNames()->all(),
+                'department' => $user->department?->name,
                 'is_protected' => $this->isProtected($user),
                 'is_self' => $request->user()->is($user),
                 'can' => [
@@ -61,6 +63,7 @@ class UserController extends Controller
     {
         return Inertia::render('users/Create', [
             'roles' => $this->roleCatalogue(),
+            'departments' => $this->departmentCatalogue(),
             'can' => [
                 'assignSuperAdmin' => $request->user()->can('assignSuperAdmin', User::class),
             ],
@@ -80,6 +83,7 @@ class UserController extends Controller
             ]);
 
             $user->email_verified_at = now();
+            $user->department_id = $request->filled('department_id') ? $request->integer('department_id') : null;
             $user->save();
 
             $user->syncRoles($request->collect('roles')->all());
@@ -100,9 +104,11 @@ class UserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'department_id' => $user->department_id,
             ],
             'roleNames' => $user->getRoleNames()->all(),
             'roles' => $this->roleCatalogue(),
+            'departments' => $this->departmentCatalogue(),
             'can' => [
                 'assignSuperAdmin' => $request->user()->can('assignSuperAdmin', User::class),
             ],
@@ -125,6 +131,8 @@ class UserController extends Controller
             if ($user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
+
+            $user->department_id = $request->filled('department_id') ? $request->integer('department_id') : null;
 
             $user->save();
 
@@ -169,6 +177,24 @@ class UserController extends Controller
             ->map(fn (Role $role): array => [
                 'name' => $role->name,
                 'is_protected' => $role->name === RoleEnum::SuperAdmin->value,
+            ])
+            ->all();
+    }
+
+    /**
+     * Get the departments that can be assigned to a user.
+     *
+     * @return array<int, array{id: int, name: string, depth: int}>
+     */
+    private function departmentCatalogue(): array
+    {
+        return Department::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Department $department): array => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'depth' => 0,
             ])
             ->all();
     }

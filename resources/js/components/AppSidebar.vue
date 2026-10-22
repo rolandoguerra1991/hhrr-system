@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { KeyRound, LayoutGrid, ShieldCheck, UserRound } from '@lucide/vue';
+import {
+    KeyRound,
+    LayoutGrid,
+    ShieldCheck,
+    UserRound,
+    Building2,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import RoleController from '@/actions/App/Http/Controllers/RoleController';
+import DepartmentController from '@/actions/App/Http/Controllers/DepartmentController';
 import PermissionController from '@/actions/App/Http/Controllers/PermissionController';
 import UserController from '@/actions/App/Http/Controllers/UserController';
 import AppLogo from '@/components/AppLogo.vue';
@@ -40,6 +47,14 @@ const administrationNavItems = computed<NavItem[]>(() => {
             title: 'Users',
             href: UserController.index.url(),
             icon: UserRound,
+        });
+    }
+
+    if (can.departments.view) {
+        items.push({
+            title: 'Departments',
+            href: DepartmentController.index.url(),
+            icon: Building2,
         });
     }
 

@@ -25,6 +25,10 @@ export type Auth = {
             view: boolean;
             create: boolean;
         };
+        departments: {
+            view: boolean;
+            create: boolean;
+        };
     };
 };
 

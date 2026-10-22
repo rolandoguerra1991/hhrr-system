@@ -5,16 +5,18 @@ import UserController from '@/actions/App/Http/Controllers/UserController';
 import Heading from '@/components/Heading.vue';
 import UserForm from '@/components/users/UserForm.vue';
 import { Button } from '@/components/ui/button';
-import type { UserAbility, UserRoleOption } from '@/types';
+import type { DepartmentOption, UserAbility, UserRoleOption } from '@/types';
 
 const props = defineProps<{
     user: {
         id: number;
         name: string;
         email: string;
+        department_id: number | null;
     };
     roleNames: string[];
     roles: UserRoleOption[];
+    departments: DepartmentOption[];
     can: UserAbility;
 }>();
 
@@ -56,6 +58,7 @@ defineOptions({
             :user="props.user"
             :role-names="props.roleNames"
             :roles="props.roles"
+            :departments="props.departments"
             :can="props.can"
         />
     </div>

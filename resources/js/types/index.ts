@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './department';
 export * from './navigation';
 export * from './pagination';
 export * from './permission';

@@ -144,6 +144,9 @@ function lockedReason(user: ManagedUser): string | null {
                     <TableRow>
                         <TableHead>User</TableHead>
                         <TableHead>Roles</TableHead>
+                        <TableHead class="hidden sm:table-cell">
+                            Department
+                        </TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -190,6 +193,14 @@ function lockedReason(user: ManagedUser): string | null {
                                 </span>
                             </div>
                         </TableCell>
+                        <TableCell class="hidden sm:table-cell">
+                            <span v-if="user.department" class="text-sm">
+                                {{ user.department }}
+                            </span>
+                            <span v-else class="text-sm text-muted-foreground">
+                                No department
+                            </span>
+                        </TableCell>
                         <TableCell class="text-right">
                             <div class="flex justify-end gap-2">
                                 <Button
@@ -229,7 +240,7 @@ function lockedReason(user: ManagedUser): string | null {
 
                     <TableRow v-if="users.data.length === 0">
                         <TableCell
-                            colspan="3"
+                            colspan="4"
                             class="py-10 text-center text-sm text-muted-foreground"
                         >
                             No users found.

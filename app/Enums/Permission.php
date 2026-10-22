@@ -20,6 +20,11 @@ enum Permission: string
     case UsersUpdate = 'users.update';
     case UsersDelete = 'users.delete';
 
+    case DepartmentsView = 'departments.view';
+    case DepartmentsCreate = 'departments.create';
+    case DepartmentsUpdate = 'departments.update';
+    case DepartmentsDelete = 'departments.delete';
+
     /**
      * Get the human readable label for each permission resource.
      *
@@ -31,6 +36,7 @@ enum Permission: string
             'roles' => 'Roles',
             'permissions' => 'Permissions',
             'users' => 'Users',
+            'departments' => 'Departments',
         ];
     }
 

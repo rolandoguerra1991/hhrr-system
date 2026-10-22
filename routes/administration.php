@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
@@ -68,4 +70,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('permissions/{permission}', [PermissionController::class, 'destroy'])
         ->middleware('can:delete,permission')
         ->name('permissions.destroy');
+
+    Route::get('departments', [DepartmentController::class, 'index'])
+        ->middleware('can:viewAny,'.Department::class)
+        ->name('departments.index');
+
+    Route::get('departments/create', [DepartmentController::class, 'create'])
+        ->middleware('can:create,'.Department::class)
+        ->name('departments.create');
+
+    Route::post('departments', [DepartmentController::class, 'store'])
+        ->middleware('can:create,'.Department::class)
+        ->name('departments.store');
+
+    Route::get('departments/{department}/edit', [DepartmentController::class, 'edit'])
+        ->middleware('can:update,department')
+        ->name('departments.edit');
+
+    Route::put('departments/{department}', [DepartmentController::class, 'update'])
+        ->middleware('can:update,department')
+        ->name('departments.update');
+
+    Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])
+        ->middleware('can:delete,department')
+        ->name('departments.destroy');
 });
