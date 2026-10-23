@@ -18,5 +18,16 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             RolesAndPermissionsSeeder::class,
         ]);
+
+        if (! app()->environment(['local', 'development'])) {
+            $this->command->warn('Skipping demo departments and positions outside the local or development environment.');
+
+            return;
+        }
+
+        $this->call([
+            DepartmentSeeder::class,
+            PositionSeeder::class,
+        ]);
     }
 }
