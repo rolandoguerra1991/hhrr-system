@@ -1,11 +1,14 @@
 <?php
 
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\EmployeeAssignmentController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -120,4 +123,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('positions/{position}', [PositionController::class, 'destroy'])
         ->middleware('can:delete,position')
         ->name('positions.destroy');
+
+    Route::get('employees', [EmployeeController::class, 'index'])
+        ->middleware('can:viewAny,'.Employee::class)
+        ->name('employees.index');
+
+    Route::get('employees/create', [EmployeeController::class, 'create'])
+        ->middleware('can:create,'.Employee::class)
+        ->name('employees.create');
+
+    Route::post('employees', [EmployeeController::class, 'store'])
+        ->middleware('can:create,'.Employee::class)
+        ->name('employees.store');
+
+    Route::get('employees/{employee}', [EmployeeController::class, 'show'])
+        ->middleware('can:view,employee')
+        ->name('employees.show');
+
+    Route::get('employees/{employee}/edit', [EmployeeController::class, 'edit'])
+        ->middleware('can:update,employee')
+        ->name('employees.edit');
+
+    Route::put('employees/{employee}', [EmployeeController::class, 'update'])
+        ->middleware('can:update,employee')
+        ->name('employees.update');
+
+    Route::post('employees/{employee}/assignments', [EmployeeAssignmentController::class, 'store'])
+        ->middleware('can:update,employee')
+        ->name('employees.assignments.store');
+
+    Route::post('employees/{employee}/terminate', [EmployeeController::class, 'terminate'])
+        ->middleware('can:update,employee')
+        ->name('employees.terminate');
+
+    Route::post('employees/{employee}/rehire', [EmployeeController::class, 'rehire'])
+        ->middleware('can:update,employee')
+        ->name('employees.rehire');
 });

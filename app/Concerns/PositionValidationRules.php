@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 trait PositionValidationRules
 {
@@ -45,6 +46,35 @@ trait PositionValidationRules
                 },
             ],
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+        ];
+    }
+
+    /**
+     * Reject department-scope changes after assignments reference a position.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    protected function positionScopeGuards(?Position $position): array
+    {
+        return [
+            function (Validator $validator) use ($position): void {
+                if (! $position instanceof Position || $validator->errors()->has('department_id')) {
+                    return;
+                }
+
+                if (! $position->employmentAssignments()->exists()) {
+                    return;
+                }
+
+                if ($this->submittedDepartmentId() === $position->department_id) {
+                    return;
+                }
+
+                $validator->errors()->add(
+                    'department_id',
+                    __('A position with assignment history cannot be moved to another department.'),
+                );
+            },
         ];
     }
 

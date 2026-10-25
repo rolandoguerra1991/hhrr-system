@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -67,6 +68,11 @@ class HandleInertiaRequests extends Middleware
                     'positions' => [
                         'view' => $user?->can('viewAny', Position::class) ?? false,
                         'create' => $user?->can('create', Position::class) ?? false,
+                    ],
+                    'employees' => [
+                        'view' => $user?->can('viewAny', Employee::class) ?? false,
+                        'create' => $user?->can('create', Employee::class) ?? false,
+                        'update' => $user?->can('updateAny', Employee::class) ?? false,
                     ],
                 ],
             ],

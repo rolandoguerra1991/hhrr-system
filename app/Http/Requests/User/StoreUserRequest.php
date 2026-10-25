@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\User;
 
-use App\Concerns\DepartmentMembershipRules;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Concerns\RoleAssignmentRules;
@@ -12,7 +11,7 @@ use Illuminate\Validation\Validator;
 
 class StoreUserRequest extends FormRequest
 {
-    use DepartmentMembershipRules, PasswordValidationRules, ProfileValidationRules, RoleAssignmentRules;
+    use PasswordValidationRules, ProfileValidationRules, RoleAssignmentRules;
 
     /**
      * Get the validation rules that apply to the request.
@@ -25,7 +24,6 @@ class StoreUserRequest extends FormRequest
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
             ...$this->roleRules(),
-            ...$this->departmentMembershipRules(),
         ];
     }
 

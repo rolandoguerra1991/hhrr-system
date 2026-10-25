@@ -33,6 +33,11 @@ export type Auth = {
             view: boolean;
             create: boolean;
         };
+        employees: {
+            view: boolean;
+            create: boolean;
+            update: boolean;
+        };
     };
 };
 

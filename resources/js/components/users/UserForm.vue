@@ -16,30 +16,16 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import type {
-    ComboboxOption,
-    DepartmentOption,
-    UserAbility,
-    UserRoleOption,
-} from '@/types';
+import type { ComboboxOption, UserAbility, UserRoleOption } from '@/types';
 
 const props = withDefaults(
     defineProps<{
         roles: UserRoleOption[];
-        departments: DepartmentOption[];
         can: UserAbility;
         user?: {
             id: number;
             name: string;
             email: string;
-            department_id: number | null;
         };
         roleNames?: string[];
         stickyActions?: boolean;
@@ -58,20 +44,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     roles: [...props.roleNames],
-    department_id: props.user?.department_id ?? null,
 });
-
-const departmentId = computed({
-    get: (): string =>
-        form.department_id === null ? 'none' : String(form.department_id),
-    set: (value: string): void => {
-        form.department_id = value === 'none' ? null : Number(value);
-    },
-});
-
-function departmentLabel(department: DepartmentOption): string {
-    return `${'\u2014 '.repeat(department.depth)}${department.name}`;
-}
 
 const roleOptions = computed<ComboboxOption[]>(() =>
     props.roles.map((role) => ({
@@ -229,35 +202,6 @@ function submit(): void {
 
                         <InputError :message="form.errors.roles" />
                     </MultiSelectCombobox>
-                </div>
-
-                <div class="grid gap-2 md:col-span-2">
-                    <Label for="department_id">Department</Label>
-                    <Select v-model="departmentId">
-                        <SelectTrigger
-                            id="department_id"
-                            class="w-full"
-                            :aria-invalid="Boolean(form.errors.department_id)"
-                            data-test="user-department-select"
-                        >
-                            <SelectValue placeholder="No department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">No department</SelectItem>
-                            <SelectItem
-                                v-for="department in props.departments"
-                                :key="department.id"
-                                :value="String(department.id)"
-                            >
-                                {{ departmentLabel(department) }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p class="text-sm text-muted-foreground">
-                        Optional. Assign the account to the part of the company
-                        it works in.
-                    </p>
-                    <InputError :message="form.errors.department_id" />
                 </div>
             </CardContent>
         </Card>

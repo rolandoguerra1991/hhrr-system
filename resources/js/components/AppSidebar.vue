@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     BriefcaseBusiness,
     Building2,
+    IdCard,
     KeyRound,
     LayoutGrid,
     ShieldCheck,
@@ -11,6 +12,7 @@ import {
 import { computed } from 'vue';
 import RoleController from '@/actions/App/Http/Controllers/RoleController';
 import DepartmentController from '@/actions/App/Http/Controllers/DepartmentController';
+import EmployeeController from '@/actions/App/Http/Controllers/EmployeeController';
 import PermissionController from '@/actions/App/Http/Controllers/PermissionController';
 import PositionController from '@/actions/App/Http/Controllers/PositionController';
 import UserController from '@/actions/App/Http/Controllers/UserController';
@@ -43,6 +45,14 @@ const mainNavItems: NavItem[] = [
 const administrationNavItems = computed<NavItem[]>(() => {
     const can = page.props.auth.can;
     const items: NavItem[] = [];
+
+    if (can.employees.view) {
+        items.push({
+            title: 'Employees',
+            href: EmployeeController.index.url(),
+            icon: IdCard,
+        });
+    }
 
     if (can.users.view) {
         items.push({

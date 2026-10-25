@@ -5,11 +5,10 @@ import UserController from '@/actions/App/Http/Controllers/UserController';
 import Heading from '@/components/Heading.vue';
 import UserForm from '@/components/users/UserForm.vue';
 import { Button } from '@/components/ui/button';
-import type { DepartmentOption, UserAbility, UserRoleOption } from '@/types';
+import type { UserAbility, UserRoleOption } from '@/types';
 
 const props = defineProps<{
     roles: UserRoleOption[];
-    departments: DepartmentOption[];
     can: UserAbility;
 }>();
 
@@ -47,11 +46,6 @@ defineOptions({
             />
         </div>
 
-        <UserForm
-            :roles="props.roles"
-            :departments="props.departments"
-            :can="props.can"
-            sticky-actions
-        />
+        <UserForm :roles="props.roles" :can="props.can" sticky-actions />
     </div>
 </template>

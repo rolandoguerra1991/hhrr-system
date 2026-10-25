@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Actions\Fortify\EnsureUserHasActiveEmployment;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Responses\ActiveEmploymentTwoFactorLoginResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -10,6 +12,12 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Actions\AttemptToAuthenticate;
+use Laravel\Fortify\Actions\CanonicalizeUsername;
+use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
+use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
+use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -20,7 +28,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(TwoFactorLoginResponse::class, ActiveEmploymentTwoFactorLoginResponse::class);
     }
 
     /**
@@ -39,6 +47,14 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::authenticateThrough(fn (Request $request): array => [
+            config('fortify.limiters.login') ? null : EnsureLoginIsNotThrottled::class,
+            config('fortify.lowercase_usernames') ? CanonicalizeUsername::class : null,
+            Features::enabled(Features::twoFactorAuthentication()) ? RedirectsIfTwoFactorAuthenticatable::class : null,
+            AttemptToAuthenticate::class,
+            EnsureUserHasActiveEmployment::class,
+            PrepareAuthenticatedSession::class,
+        ]);
     }
 
     /**

@@ -130,6 +130,12 @@ function destroy(): void {
                         </TableCell>
                         <TableCell class="text-right">
                             <div class="flex justify-end gap-2">
+                                <span
+                                    v-if="position.is_in_use"
+                                    class="self-center text-xs text-muted-foreground"
+                                >
+                                    In use ({{ position.assignments_count }})
+                                </span>
                                 <Button
                                     v-if="position.can.update"
                                     variant="outline"
@@ -148,7 +154,10 @@ function destroy(): void {
                                 </Button>
 
                                 <Button
-                                    v-if="position.can.delete"
+                                    v-if="
+                                        position.can.delete &&
+                                        !position.is_in_use
+                                    "
                                     variant="ghost"
                                     size="icon-sm"
                                     title="Delete position"

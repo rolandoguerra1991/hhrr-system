@@ -50,7 +50,8 @@ const deleteDialogOpen = ref(false);
 function isInUse(department: Department): boolean {
     return (
         department.children_count > 0 ||
-        department.users_count > 0 ||
+        department.employees_count > 0 ||
+        department.assignments_count > 0 ||
         department.positions_count > 0
     );
 }
@@ -62,8 +63,12 @@ function inUseReason(department: Department): string | null {
         reasons.push('move or delete the child departments');
     }
 
-    if (department.users_count > 0) {
-        reasons.push('reassign the users to another department');
+    if (department.employees_count > 0) {
+        reasons.push('reassign the employees to another department');
+    }
+
+    if (department.assignments_count > 0) {
+        reasons.push('retain the employee assignment history');
     }
 
     if (department.positions_count > 0) {
@@ -140,7 +145,7 @@ function destroy(): void {
                             Manager
                         </TableHead>
                         <TableHead class="hidden sm:table-cell">
-                            Members
+                            Employees
                         </TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
@@ -177,11 +182,11 @@ function destroy(): void {
                             >
                                 {{ department.manager_name ?? 'No manager' }}
                                 <span aria-hidden="true">·</span>
-                                {{ department.users_count }}
+                                {{ department.employees_count }}
                                 {{
-                                    department.users_count === 1
-                                        ? 'member'
-                                        : 'members'
+                                    department.employees_count === 1
+                                        ? 'employee'
+                                        : 'employees'
                                 }}
                             </p>
                         </TableCell>
@@ -201,7 +206,7 @@ function destroy(): void {
                                 class="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
                             >
                                 <Users class="size-4" />
-                                {{ department.users_count }}
+                                {{ department.employees_count }}
                             </span>
                         </TableCell>
                         <TableCell class="text-right">

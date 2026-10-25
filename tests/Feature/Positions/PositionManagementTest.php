@@ -2,6 +2,8 @@
 
 use App\Enums\Role as RoleEnum;
 use App\Models\Department;
+use App\Models\Employee;
+use App\Models\EmploymentAssignment;
 use App\Models\Position;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -79,9 +81,42 @@ test('the positions index lists positions ordered by name with their department'
             ->has('positions', 2)
             ->where('positions.0.name', 'Engineer')
             ->where('positions.0.department_name', 'Operations')
+            ->where('positions.0.assignments_count', 0)
+            ->where('positions.0.is_in_use', false)
             ->where('positions.0.can.update', false)
             ->where('positions.1.name', 'General Manager')
             ->where('positions.1.department_name', null)
+        );
+});
+
+test('the positions index marks positions with assignment history as in use', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo(['positions.view', 'positions.delete']);
+
+    $position = Position::factory()->create(['name' => 'Engineer']);
+    $currentEmployee = Employee::factory()->active()->create();
+    $formerEmployee = Employee::factory()->terminated()->create();
+
+    EmploymentAssignment::factory()
+        ->for($currentEmployee)
+        ->for($position)
+        ->current()
+        ->create();
+    EmploymentAssignment::factory()
+        ->for($formerEmployee)
+        ->for($position)
+        ->endedOn(now()->subDay())
+        ->create();
+
+    $this->actingAs($actor)
+        ->get(route('positions.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('positions/Index')
+            ->where('positions.0.id', $position->id)
+            ->where('positions.0.assignments_count', 2)
+            ->where('positions.0.is_in_use', true)
+            ->where('positions.0.can.delete', true)
         );
 });
 
@@ -193,6 +228,83 @@ test('a position can be moved back to company-wide', function () {
     expect($position->refresh()->department_id)->toBeNull();
 });
 
+test('a position with assignment history cannot move to another department', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.update');
+
+    $operations = Department::factory()->create();
+    $warehouse = Department::factory()->create();
+    $position = Position::factory()->inDepartment($operations)->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->active()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->current()
+        ->create();
+
+    $this->actingAs($actor)
+        ->from(route('positions.edit', $position))
+        ->put(route('positions.update', $position), [
+            'name' => 'Engineer',
+            'department_id' => $warehouse->id,
+        ])
+        ->assertSessionHasErrors([
+            'department_id' => 'A position with assignment history cannot be moved to another department.',
+        ]);
+
+    expect($position->refresh()->department_id)->toBe($operations->id);
+});
+
+test('a position with assignment history cannot move to company-wide', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.update');
+
+    $department = Department::factory()->create();
+    $position = Position::factory()->inDepartment($department)->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->active()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->current()
+        ->create();
+
+    $this->actingAs($actor)
+        ->from(route('positions.edit', $position))
+        ->put(route('positions.update', $position), [
+            'name' => 'Engineer',
+            'department_id' => '',
+        ])
+        ->assertSessionHasErrors([
+            'department_id' => 'A position with assignment history cannot be moved to another department.',
+        ]);
+
+    expect($position->refresh()->department_id)->toBe($department->id);
+});
+
+test('a position with assignment history can be renamed without changing its scope', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.update');
+
+    $department = Department::factory()->create();
+    $position = Position::factory()->inDepartment($department)->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->active()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->current()
+        ->create();
+
+    $this->actingAs($actor)
+        ->put(route('positions.update', $position), [
+            'name' => 'Senior Engineer',
+            'department_id' => $department->id,
+        ])
+        ->assertRedirect(route('positions.index'));
+
+    expect($position->refresh()->name)->toBe('Senior Engineer');
+    expect($position->department_id)->toBe($department->id);
+});
+
 test('a position cannot be renamed into a name used in its scope', function () {
     $actor = User::factory()->create();
     $actor->givePermissionTo('positions.update');
@@ -242,7 +354,32 @@ test('the edit form is loaded with the position and department options', functio
             ->where('position.id', $position->id)
             ->where('position.name', 'Engineer')
             ->where('position.department_id', $department->id)
+            ->where('position.is_in_use', false)
             ->where('departmentOptions.0.name', 'Operations')
+        );
+});
+
+test('the edit form marks a position with assignment history as in use', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.update');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+    $position = Position::factory()->inDepartment($department)->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->active()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->current()
+        ->create();
+
+    $this->actingAs($actor)
+        ->get(route('positions.edit', $position))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('positions/Edit')
+            ->where('position.id', $position->id)
+            ->where('position.is_in_use', true)
+            ->where('position.department_id', $department->id)
         );
 });
 
@@ -262,4 +399,48 @@ test('an unused position can be deleted without changing its department', functi
 
     expect($department->fresh())->not->toBeNull();
     expect($other->refresh()->department_id)->toBe($department->id);
+});
+
+test('a position with a current assignment cannot be deleted', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.delete');
+
+    $position = Position::factory()->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->active()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->current()
+        ->create();
+
+    $this->actingAs($actor)
+        ->from(route('positions.index'))
+        ->delete(route('positions.destroy', $position))
+        ->assertSessionHasErrors([
+            'position' => 'The Engineer position cannot be deleted while it has employee assignment history.',
+        ]);
+
+    $this->assertModelExists($position);
+});
+
+test('a position with only historical assignments cannot be deleted', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('positions.delete');
+
+    $position = Position::factory()->create(['name' => 'Engineer']);
+    $employee = Employee::factory()->terminated()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($position)
+        ->endedOn(now()->subDay())
+        ->create();
+
+    $this->actingAs($actor)
+        ->from(route('positions.index'))
+        ->delete(route('positions.destroy', $position))
+        ->assertSessionHasErrors([
+            'position' => 'The Engineer position cannot be deleted while it has employee assignment history.',
+        ]);
+
+    $this->assertModelExists($position);
 });

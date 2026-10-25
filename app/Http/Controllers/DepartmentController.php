@@ -6,7 +6,7 @@ use App\Concerns\BuildsDepartmentTree;
 use App\Http\Requests\Department\StoreDepartmentRequest;
 use App\Http\Requests\Department\UpdateDepartmentRequest;
 use App\Models\Department;
-use App\Models\User;
+use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +24,13 @@ class DepartmentController extends Controller
     public function index(Request $request): Response
     {
         $departments = Department::query()
-            ->withCount(['children', 'users', 'positions'])
-            ->with('manager:id,name')
+            ->withCount([
+                'children',
+                'currentAssignments as employees_count',
+                'employmentAssignments as assignments_count',
+                'positions',
+            ])
+            ->with('manager:id,first_name,last_name')
             ->orderBy('name')
             ->get();
 
@@ -35,9 +40,10 @@ class DepartmentController extends Controller
             'parent_id' => $row['department']->parent_id,
             'depth' => $row['depth'],
             'children_count' => $row['department']->children_count,
-            'users_count' => $row['department']->users_count,
+            'employees_count' => $row['department']->employees_count,
+            'assignments_count' => $row['department']->assignments_count,
             'positions_count' => $row['department']->positions_count,
-            'manager_name' => $row['department']->manager?->name,
+            'manager_name' => $row['department']->manager?->full_name,
             'can' => [
                 'update' => $request->user()->can('update', $row['department']),
                 'delete' => $request->user()->can('delete', $row['department']),
@@ -128,9 +134,9 @@ class DepartmentController extends Controller
             ]);
         }
 
-        if ($department->users()->exists()) {
+        if ($department->employmentAssignments()->exists()) {
             throw ValidationException::withMessages([
-                'department' => __('The :department department cannot be deleted while it has assigned users.', ['department' => $department->name]),
+                'department' => __('The :department department cannot be deleted while it has employee assignment history.', ['department' => $department->name]),
             ]);
         }
 
@@ -148,12 +154,15 @@ class DepartmentController extends Controller
      */
     private function managerOptions(): array
     {
-        return User::query()
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (User $user): array => [
-                'id' => $user->id,
-                'name' => $user->name,
+        return Employee::query()
+            ->whereHas('currentPeriod')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get(['id', 'employee_number', 'first_name', 'last_name'])
+            ->map(fn (Employee $employee): array => [
+                'id' => $employee->id,
+                'name' => $employee->full_name,
+                'employee_number' => $employee->employee_number,
             ])
             ->all();
     }

@@ -4,7 +4,8 @@ export type Department = {
     parent_id: number | null;
     depth: number;
     children_count: number;
-    users_count: number;
+    employees_count: number;
+    assignments_count: number;
     positions_count: number;
     manager_name: string | null;
     can: {
@@ -27,6 +28,12 @@ export type DepartmentDetails = {
 };
 
 export type DepartmentManagerOption = {
+    id: number;
+    name: string;
+    employee_number: string;
+};
+
+export type EmployeeDepartmentOption = {
     id: number;
     name: string;
 };

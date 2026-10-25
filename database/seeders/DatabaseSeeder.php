@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         if (! app()->environment(['local', 'development'])) {
-            $this->command->warn('Skipping demo departments and positions outside the local or development environment.');
+            $this->command->warn('Skipping demo departments, positions, and employees outside the local or development environment.');
 
             return;
         }
@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DepartmentSeeder::class,
             PositionSeeder::class,
+            EmployeeSeeder::class,
         ]);
     }
 }

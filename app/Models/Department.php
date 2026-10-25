@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,10 +16,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property int|null $parent_id
  * @property int|null $manager_id
+ * @property-read int $employees_count
+ * @property-read int $assignments_count
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Department|null $parent
- * @property-read User|null $manager
+ * @property-read Employee|null $manager
+ * @property-read Collection<int, Position> $positions
+ * @property-read Collection<int, EmploymentAssignment> $employmentAssignments
+ * @property-read Collection<int, EmploymentAssignment> $currentAssignments
  */
 #[Fillable(['name', 'parent_id', 'manager_id'])]
 class Department extends Model
@@ -47,23 +53,13 @@ class Department extends Model
     }
 
     /**
-     * Get the user who manages the department.
+     * Get the employee who manages the department.
      *
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Employee, $this>
      */
     public function manager(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'manager_id');
-    }
-
-    /**
-     * Get the users assigned to the department.
-     *
-     * @return HasMany<User, $this>
-     */
-    public function users(): HasMany
-    {
-        return $this->hasMany(User::class);
+        return $this->belongsTo(Employee::class, 'manager_id');
     }
 
     /**
@@ -74,5 +70,25 @@ class Department extends Model
     public function positions(): HasMany
     {
         return $this->hasMany(Position::class);
+    }
+
+    /**
+     * Get every employment assignment recorded for the department.
+     *
+     * @return HasMany<EmploymentAssignment, $this>
+     */
+    public function employmentAssignments(): HasMany
+    {
+        return $this->hasMany(EmploymentAssignment::class);
+    }
+
+    /**
+     * Get the assignments that are currently in effect.
+     *
+     * @return HasMany<EmploymentAssignment, $this>
+     */
+    public function currentAssignments(): HasMany
+    {
+        return $this->hasMany(EmploymentAssignment::class)->whereNull('effective_to');
     }
 }

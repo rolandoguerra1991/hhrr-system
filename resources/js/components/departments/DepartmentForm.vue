@@ -158,13 +158,14 @@ function submit(): void {
                                 :key="manager.id"
                                 :value="String(manager.id)"
                             >
-                                {{ manager.name }}
+                                {{ manager.name }} ({{
+                                    manager.employee_number
+                                }})
                             </SelectItem>
                         </SelectContent>
                     </Select>
                     <p class="text-sm text-muted-foreground">
-                        Optional. The manager does not gain any permissions from
-                        this role.
+                        Optional. Only active employees can be selected.
                     </p>
                     <InputError :message="form.errors.manager_id" />
                 </div>

@@ -2,6 +2,8 @@
 
 use App\Enums\Role as RoleEnum;
 use App\Models\Department;
+use App\Models\Employee;
+use App\Models\EmploymentAssignment;
 use App\Models\Position;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -209,7 +211,7 @@ test('the manager can be set and cleared', function () {
     $actor->givePermissionTo('departments.update');
 
     $department = Department::factory()->create(['name' => 'Operations']);
-    $manager = User::factory()->create();
+    $manager = Employee::factory()->active()->create();
 
     $this->actingAs($actor)
         ->put(route('departments.update', $department), [
@@ -228,6 +230,83 @@ test('the manager can be set and cleared', function () {
         ->assertRedirect(route('departments.index'));
 
     expect($department->refresh()->manager_id)->toBeNull();
+});
+
+test('an active employee can manage multiple departments', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.update');
+
+    $manager = Employee::factory()->active()->create();
+    $operations = Department::factory()->create(['name' => 'Operations']);
+    $support = Department::factory()->create(['name' => 'Support']);
+
+    $this->actingAs($actor)
+        ->put(route('departments.update', $operations), [
+            'name' => 'Operations',
+            'manager_id' => $manager->id,
+        ])
+        ->assertRedirect(route('departments.index'));
+
+    $this->actingAs($actor)
+        ->put(route('departments.update', $support), [
+            'name' => 'Support',
+            'manager_id' => $manager->id,
+        ])
+        ->assertRedirect(route('departments.index'));
+
+    expect($operations->refresh()->manager_id)->toBe($manager->id);
+    expect($support->refresh()->manager_id)->toBe($manager->id);
+});
+
+test('a terminated employee cannot be assigned as a department manager', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.update');
+
+    $currentManager = Employee::factory()->active()->create();
+    $terminatedEmployee = Employee::factory()->terminated()->create();
+    $department = Department::factory()->create([
+        'name' => 'Operations',
+        'manager_id' => $currentManager->id,
+    ]);
+
+    $this->actingAs($actor)
+        ->from(route('departments.edit', $department))
+        ->put(route('departments.update', $department), [
+            'name' => 'Operations',
+            'manager_id' => $terminatedEmployee->id,
+        ])
+        ->assertSessionHasErrors([
+            'manager_id' => 'A department manager must be an active employee.',
+        ]);
+
+    expect($department->refresh()->manager_id)->toBe($currentManager->id);
+});
+
+test('department forms offer only active managers with employee numbers', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.create');
+
+    $activeEmployee = Employee::factory()->active()->create([
+        'first_name' => 'Ada',
+        'last_name' => 'Lovelace',
+        'employee_number' => 'EMP-0001',
+    ]);
+    Employee::factory()->terminated()->create([
+        'first_name' => 'Grace',
+        'last_name' => 'Hopper',
+        'employee_number' => 'EMP-0002',
+    ]);
+
+    $this->actingAs($actor)
+        ->get(route('departments.create'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('departments/Create')
+            ->has('managers', 1)
+            ->where('managers.0.id', $activeEmployee->id)
+            ->where('managers.0.name', 'Ada Lovelace')
+            ->where('managers.0.employee_number', 'EMP-0001')
+        );
 });
 
 test('the edit form excludes the department and its descendants from parent options', function () {
@@ -269,17 +348,39 @@ test('a department with children cannot be deleted', function () {
     expect(Department::whereKey($operations->id)->exists())->toBeTrue();
 });
 
-test('a department with assigned users cannot be deleted', function () {
+test('a department with a current employee assignment cannot be deleted', function () {
     $actor = User::factory()->create();
     $actor->givePermissionTo('departments.delete');
 
     $department = Department::factory()->create(['name' => 'Operations']);
-    User::factory()->create(['department_id' => $department->id]);
+    Employee::factory()->assigned($department)->create();
 
     $this->actingAs($actor)
         ->from(route('departments.index'))
         ->delete(route('departments.destroy', $department))
         ->assertSessionHasErrors('department');
+
+    expect(Department::whereKey($department->id)->exists())->toBeTrue();
+});
+
+test('a department with only historical employee assignments cannot be deleted', function () {
+    $actor = User::factory()->create();
+    $actor->givePermissionTo('departments.delete');
+
+    $department = Department::factory()->create(['name' => 'Operations']);
+    $employee = Employee::factory()->terminated()->create();
+    EmploymentAssignment::factory()
+        ->for($employee)
+        ->for($department)
+        ->endedOn(now()->subDay())
+        ->create();
+
+    $this->actingAs($actor)
+        ->from(route('departments.index'))
+        ->delete(route('departments.destroy', $department))
+        ->assertSessionHasErrors([
+            'department' => 'The Operations department cannot be deleted while it has employee assignment history.',
+        ]);
 
     expect(Department::whereKey($department->id)->exists())->toBeTrue();
 });
@@ -328,7 +429,7 @@ test('an unused department can be deleted', function () {
     expect(Department::whereKey($department->id)->exists())->toBeFalse();
 });
 
-test('the department tree is listed in hierarchy order with depth and counts', function () {
+test('the department tree shows current employees and all assignment history', function () {
     $user = User::factory()->create();
     $user->givePermissionTo('departments.view');
 
@@ -336,9 +437,18 @@ test('the department tree is listed in hierarchy order with depth and counts', f
     $warehouse = Department::factory()->childOf($operations)->create(['name' => 'Warehouse']);
     Department::factory()->create(['name' => 'Sales']);
 
-    $manager = User::factory()->create(['name' => 'Ada Lovelace']);
+    $manager = Employee::factory()->active()->create([
+        'first_name' => 'Ada',
+        'last_name' => 'Lovelace',
+    ]);
     $warehouse->update(['manager_id' => $manager->id]);
-    User::factory()->create(['department_id' => $warehouse->id]);
+    Employee::factory()->assigned($warehouse)->create();
+    $formerEmployee = Employee::factory()->terminated()->create();
+    EmploymentAssignment::factory()
+        ->for($formerEmployee)
+        ->for($warehouse)
+        ->endedOn(now()->subDay())
+        ->create();
     Position::factory()->inDepartment($warehouse)->create(['name' => 'Engineer']);
 
     $this->actingAs($user)
@@ -351,13 +461,15 @@ test('the department tree is listed in hierarchy order with depth and counts', f
             ->where('departments.0.name', 'Operations')
             ->where('departments.0.depth', 0)
             ->where('departments.0.children_count', 1)
-            ->where('departments.0.users_count', 0)
+            ->where('departments.0.employees_count', 0)
+            ->where('departments.0.assignments_count', 0)
             ->where('departments.0.positions_count', 0)
             ->where('departments.0.manager_name', null)
             ->where('departments.0.can.update', false)
             ->where('departments.1.name', 'Warehouse')
             ->where('departments.1.depth', 1)
-            ->where('departments.1.users_count', 1)
+            ->where('departments.1.employees_count', 1)
+            ->where('departments.1.assignments_count', 2)
             ->where('departments.1.positions_count', 1)
             ->where('departments.1.manager_name', 'Ada Lovelace')
             ->where('departments.1.can.delete', false)

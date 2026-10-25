@@ -36,6 +36,8 @@ const props = withDefaults(
 
 const isEditing = computed(() => props.position !== undefined);
 
+const isScopeLocked = computed(() => props.position?.is_in_use === true);
+
 const form = useForm({
     name: props.position?.name ?? '',
     department_id: props.position?.department_id ?? null,
@@ -98,7 +100,7 @@ function submit(): void {
 
                 <div class="grid gap-2">
                     <Label for="department_id">Department</Label>
-                    <Select v-model="departmentId">
+                    <Select v-model="departmentId" :disabled="isScopeLocked">
                         <SelectTrigger
                             id="department_id"
                             class="w-full"
@@ -120,7 +122,16 @@ function submit(): void {
                             </SelectItem>
                         </SelectContent>
                     </Select>
-                    <p class="text-sm text-muted-foreground">
+                    <p
+                        v-if="isScopeLocked"
+                        class="text-sm text-muted-foreground"
+                        data-test="position-scope-locked"
+                    >
+                        The department scope is locked because this position has
+                        employment assignment history. The name can still
+                        change.
+                    </p>
+                    <p v-else class="text-sm text-muted-foreground">
                         Leave empty to make the position company-wide.
                     </p>
                     <InputError :message="form.errors.department_id" />

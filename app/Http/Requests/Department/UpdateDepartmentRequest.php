@@ -33,6 +33,9 @@ class UpdateDepartmentRequest extends FormRequest
     {
         $department = $this->route('department');
 
-        return $this->departmentParentGuards($department instanceof Department ? $department : null);
+        return [
+            ...$this->departmentParentGuards($department instanceof Department ? $department : null),
+            ...$this->departmentManagerGuards(),
+        ];
     }
 }

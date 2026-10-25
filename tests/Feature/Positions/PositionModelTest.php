@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Department;
+use App\Models\Employee;
+use App\Models\EmploymentAssignment;
 use App\Models\Position;
 
 test('a position exposes its department and a department exposes its positions', function () {
@@ -24,4 +26,25 @@ test('the factory creates a company-wide position and a department position', fu
 
     expect($companyWide->department_id)->toBeNull();
     expect($scoped->department_id)->toBe($department->id);
+});
+
+test('a position exposes its current and historical assignments', function () {
+    $position = Position::factory()->create();
+    $currentEmployee = Employee::factory()->active()->create();
+    $formerEmployee = Employee::factory()->terminated()->create();
+
+    $currentAssignment = EmploymentAssignment::factory()
+        ->for($currentEmployee)
+        ->for($position)
+        ->current()
+        ->create();
+    $historicalAssignment = EmploymentAssignment::factory()
+        ->for($formerEmployee)
+        ->for($position)
+        ->endedOn(now()->subDay())
+        ->create();
+
+    expect($position->employmentAssignments->contains($currentAssignment))->toBeTrue();
+    expect($position->employmentAssignments->contains($historicalAssignment))->toBeTrue();
+    expect($position->isInUse())->toBeTrue();
 });

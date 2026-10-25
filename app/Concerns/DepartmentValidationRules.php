@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Models\Department;
+use App\Models\Employee;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,7 +47,41 @@ trait DepartmentValidationRules
                 },
             ],
             'parent_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
-            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'manager_id' => ['nullable', 'integer', Rule::exists('employees', 'id')],
+        ];
+    }
+
+    /**
+     * Reject a manager who does not have an open employment period.
+     *
+     * @return array<int, callable(Validator): void>
+     */
+    protected function departmentManagerGuards(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->has('manager_id')) {
+                    return;
+                }
+
+                $managerId = $this->input('manager_id');
+
+                if ($managerId === null || $managerId === '') {
+                    return;
+                }
+
+                $isActiveEmployee = Employee::query()
+                    ->whereKey($managerId)
+                    ->whereHas('currentPeriod')
+                    ->exists();
+
+                if (! $isActiveEmployee) {
+                    $validator->errors()->add(
+                        'manager_id',
+                        __('A department manager must be an active employee.'),
+                    );
+                }
+            },
         ];
     }
 
